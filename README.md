@@ -45,6 +45,13 @@ export PYTHONPATH=pose_extractor/build/:$PYTHONPATH
 Pre=trained model is located under data/human-pose-estimation-3d.pth
 It is also available at [Google Drive](https://drive.google.com/file/d/1niBUbUecPhKt3GyeDNukobL4OQ3jqssH/view?usp=sharing).
 
+## Get ONNX model
+Pretrained model is located under `data/human-pose-estimation-3d.pth`.
+Convert it to `.onnx` format to use in VR Pipeline:
+```
+python to_onnx.py --height <out_height> --width <out_width> --input_path data/human-pose-estimation-3d.pth --output_path <out_onnx_path>
+```
+
 ## Running
 
 To run the demo, pass path to the pre-trained checkpoint and camera id (or path to video file):
