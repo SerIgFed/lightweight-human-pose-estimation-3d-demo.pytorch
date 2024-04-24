@@ -42,7 +42,8 @@ export PYTHONPATH=pose_extractor/build/:$PYTHONPATH
 
 ## Pre-trained model <a name="pre-trained-model"/>
 
-Pre-trained model is available at [Google Drive](https://drive.google.com/file/d/1niBUbUecPhKt3GyeDNukobL4OQ3jqssH/view?usp=sharing).
+Pre=trained model is located under data/human-pose-estimation-3d.pth
+It is also available at [Google Drive](https://drive.google.com/file/d/1niBUbUecPhKt3GyeDNukobL4OQ3jqssH/view?usp=sharing).
 
 ## Running
 
