@@ -82,7 +82,7 @@ if __name__ == '__main__':
                         type=str, default=None)
     parser.add_argument('--fx', type=np.float32, default=-1, help='Optional. Camera focal length.')
     parser.add_argument('--show3d', type=bool, default=0, help='Optional. Show 3D.')
-    parser.add_argument('--rotate', type=int, default=0, help='Optional. Rotate each given frame by 180 deg. before process')
+    parser.add_argument('--rotate', action='store_true', help='Optional. Rotate each given frame by 180 deg. before process')
     args = parser.parse_args()
 
     if args.video == '' and args.images == '':
