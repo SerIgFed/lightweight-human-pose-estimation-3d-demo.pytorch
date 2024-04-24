@@ -60,9 +60,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='Lightweight 3D human pose estimation demo. '
                                         'Press esc to exit, "p" to (un)pause video or process next image.')
     parser.add_argument('-m', '--model',
-                        help='Required. Path to checkpoint with a trained model '
+                        help='Optional. Path to checkpoint with a trained model '
                              '(or an .xml file in case of OpenVINO inference).',
-                        type=str, required=True)
+                        type=str, default='data/human-pose-estimation-3d.pth')
     parser.add_argument('--video', help='Optional. Path to video file or camera id.', type=str, default='')
     parser.add_argument('-d', '--device',
                         help='Optional. Specify the target device to infer on: CPU or GPU. '
@@ -82,6 +82,7 @@ if __name__ == '__main__':
                         type=str, default=None)
     parser.add_argument('--fx', type=np.float32, default=-1, help='Optional. Camera focal length.')
     parser.add_argument('--show3d', type=bool, default=0, help='Optional. Show 3D.')
+    parser.add_argument('--rotate', type=int, default=0, help='Optional. Rotate each given frame by 180 deg. before process')
     args = parser.parse_args()
 
     if args.video == '' and args.images == '':
@@ -115,9 +116,13 @@ if __name__ == '__main__':
         current_time = cv2.getTickCount()
         if frame is None:
             break
+        if args.rotate:
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
+
         input_scale = base_height / frame.shape[0]
         scaled_img = cv2.resize(frame, dsize=None, fx=input_scale, fy=input_scale)
         scaled_img = scaled_img[:, 0:scaled_img.shape[1] - (scaled_img.shape[1] % stride)]  # better to pad, but cut out for demo
+
         if fx < 0:  # Focal length is unknown
             fx = np.float32(0.8 * frame.shape[1])
 
