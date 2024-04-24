@@ -9,6 +9,7 @@ from modules.input_reader import VideoReader, ImageReader
 from modules.draw import Plotter3d, draw_poses
 from modules.parse_poses import parse_poses
 
+canvas_3d_window_name = 'Canvas 3D'
 
 def rotate_poses(poses_3d, R, t):
     R_inv = np.linalg.inv(R)
@@ -18,6 +19,41 @@ def rotate_poses(poses_3d, R, t):
         poses_3d[pose_id] = pose_3d.transpose().reshape(-1)
 
     return poses_3d
+
+def prepare3d():
+    canvas_3d = np.zeros((720, 1280, 3), dtype=np.uint8)
+    plotter = Plotter3d(canvas_3d.shape[:2])
+    cv2.namedWindow(canvas_3d_window_name)
+    cv2.setMouseCallback(canvas_3d_window_name, Plotter3d.mouse_callback)
+
+    file_path = args.extrinsics_path
+    if file_path is None:
+        file_path = os.path.join('data', 'extrinsics.json')
+    with open(file_path, 'r') as f:
+        extrinsics = json.load(f)
+    R = np.array(extrinsics['R'], dtype=np.float32)
+    t = np.array(extrinsics['t'], dtype=np.float32)
+    return canvas_3d, plotter, R, t
+
+
+def plot3d(canvas_3d, plotter, poses_3d, edges):
+    plotter.plot(canvas_3d, poses_3d, edges)
+    cv2.imshow(canvas_3d_window_name, canvas_3d)
+
+
+def process3d(poses_3d):
+    edges = []
+    if len(poses_3d):
+        poses_3d = rotate_poses(poses_3d, R, t)
+        poses_3d_copy = poses_3d.copy()
+        x = poses_3d_copy[:, 0::4]
+        y = poses_3d_copy[:, 1::4]
+        z = poses_3d_copy[:, 2::4]
+        poses_3d[:, 0::4], poses_3d[:, 1::4], poses_3d[:, 2::4] = -z, x, -y
+
+        poses_3d = poses_3d.reshape(poses_3d.shape[0], 19, -1)[:, :, 0:3]
+        edges = (Plotter3d.SKELETON_EDGES + 19 * np.arange(poses_3d.shape[0]).reshape((-1, 1, 1))).reshape((-1, 2))
+    return poses_3d, edges
 
 
 if __name__ == '__main__':
@@ -45,6 +81,7 @@ if __name__ == '__main__':
                         help='Optional. Path to file with camera extrinsics.',
                         type=str, default=None)
     parser.add_argument('--fx', type=np.float32, default=-1, help='Optional. Camera focal length.')
+    parser.add_argument('--show3d', type=bool, default=0, help='Optional. Show 3D.')
     args = parser.parse_args()
 
     if args.video == '' and args.images == '':
@@ -58,19 +95,8 @@ if __name__ == '__main__':
         from modules.inference_engine_pytorch import InferenceEnginePyTorch
         net = InferenceEnginePyTorch(args.model, args.device, use_tensorrt=args.use_tensorrt)
 
-    canvas_3d = np.zeros((720, 1280, 3), dtype=np.uint8)
-    plotter = Plotter3d(canvas_3d.shape[:2])
-    canvas_3d_window_name = 'Canvas 3D'
-    cv2.namedWindow(canvas_3d_window_name)
-    cv2.setMouseCallback(canvas_3d_window_name, Plotter3d.mouse_callback)
-
-    file_path = args.extrinsics_path
-    if file_path is None:
-        file_path = os.path.join('data', 'extrinsics.json')
-    with open(file_path, 'r') as f:
-        extrinsics = json.load(f)
-    R = np.array(extrinsics['R'], dtype=np.float32)
-    t = np.array(extrinsics['t'], dtype=np.float32)
+    if args.show3d:
+        canvas_3d, plotter, R, t = prepare3d()
 
     frame_provider = ImageReader(args.images)
     is_video = False
@@ -97,20 +123,11 @@ if __name__ == '__main__':
 
         inference_result = net.infer(scaled_img)
         poses_3d, poses_2d = parse_poses(inference_result, input_scale, stride, fx, is_video)
-        edges = []
-        if len(poses_3d):
-            poses_3d = rotate_poses(poses_3d, R, t)
-            poses_3d_copy = poses_3d.copy()
-            x = poses_3d_copy[:, 0::4]
-            y = poses_3d_copy[:, 1::4]
-            z = poses_3d_copy[:, 2::4]
-            poses_3d[:, 0::4], poses_3d[:, 1::4], poses_3d[:, 2::4] = -z, x, -y
 
-            poses_3d = poses_3d.reshape(poses_3d.shape[0], 19, -1)[:, :, 0:3]
-            edges = (Plotter3d.SKELETON_EDGES + 19 * np.arange(poses_3d.shape[0]).reshape((-1, 1, 1))).reshape((-1, 2))
-        plotter.plot(canvas_3d, poses_3d, edges)
-        cv2.imshow(canvas_3d_window_name, canvas_3d)
-
+        if args.show3d:
+            poses_3d, edges = process3d(poses_3d)
+            plot3d(canvas_3d, plotter, poses_3d, edges)
+        
         draw_poses(frame, poses_2d)
         current_time = (cv2.getTickCount() - current_time) / cv2.getTickFrequency()
         if mean_time == 0:
@@ -134,8 +151,8 @@ if __name__ == '__main__':
             while (key != p_code
                    and key != esc_code
                    and key != space_code):
-                plotter.plot(canvas_3d, poses_3d, edges)
-                cv2.imshow(canvas_3d_window_name, canvas_3d)
+                if args.show3d:
+                    plot3d(canvas_3d, plotter, poses_3d, edges)
                 key = cv2.waitKey(33)
             if key == esc_code:
                 break
