@@ -52,13 +52,37 @@ Convert it to `.onnx` format to use in VR Pipeline:
 python to_onnx.py --height <out_height> --width <out_width> --input_path data/human-pose-estimation-3d.pth --output_path <out_onnx_path>
 ```
 
+### Required width, height and output_path
+Given that full_frame_width has size `\[full_width, full_height\]`,
+"tracker:pos_model_scale" is set to `pm_scale` in config.
+
+You need create ONNX model with
+* height = ceil(full_height / pm_scale)
+* width  = ceil(height * full_width / full_height)
+* output_path = \<path to Pipeline\>/people_segm/models/skeleton/xnect_\<width\>x\<height\>.onnx
+
+For example:
+Full frame width is 3840x2160, pos_model_scale is 8. Then
+* height = ceil(2160 / 8) = 270
+* width  = ceil(270 * 3840 / 2160) = 480
+* output_path is \<path to Pipeline\>/people_segm/models/skeleton/xnect_480x270.onnx
+
+Another example:
+Full frame width is 3120x2340, pos_model_scale is 8. Then
+* height = ceil(2340 / 8) = ceil(292.5) = 293
+* width = ceil(293 * 3120 / 2340) = 391
+* output_path is \<path to Pipeline\>/people_segm/models/skeleton/xnect_391x293.onnx
+
+
 ## Running
 
 To run the demo, pass path to the pre-trained checkpoint and camera id (or path to video file):
 ```
 python demo.py --model human-pose-estimation-3d.pth --video 0
 ```
-> Camera can capture scene under different view angles, so for correct scene visualization, please pass camera extrinsics and focal length with `--extrinsics` and `--fx` options correspondingly (extrinsics sample format can be found in data folder). In case no camera parameters provided, demo will use the default ones.
+> Camera can capture scene under different view angles, so for correct scene visualization,
+ please pass camera extrinsics and focal length with `--extrinsics` and `--fx` options correspondingly
+ (extrinsics sample format can be found in data folder). In case no camera parameters provided, demo will use the default ones.
 
 ## Inference with OpenVINO <a name="inference-openvino"/>
 
@@ -83,14 +107,15 @@ python demo.py --model human-pose-estimation-3d.xml --device CPU --use-openvino 
 
 ## Inference with TensorRT <a name="inference-tensorrt"/>
 
-To run with TensorRT, it is necessary to install it properly. Please, follow the [official guide](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html), these steps work for me:
+To run with TensorRT, it is necessary to install it properly.
+Please, follow the [official guide](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html), these steps work for me:
 1. [Install](https://developer.nvidia.com/cuda-downloads) CUDA 11.1.
 2. [Install](https://developer.nvidia.com/cudnn) cuDNN 8 (runtime library, then developer).
 3. Install `nvidia-tensorrt`:
     ```
-    python -m pip install nvidia-pyindex
-    pip install nvidia-tensorrt==7.2.1.6
-    ```
+	python -m pip install nvidia-pyindex
+	pip install nvidia-tensorrt==7.2.1.6
+	```
 4. [Install](https://github.com/NVIDIA-AI-IOT/torch2trt) `torch2trt`.
 
 Convert checkpoint to TensorRT format:
